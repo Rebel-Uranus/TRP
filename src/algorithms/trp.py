@@ -19,7 +19,7 @@ class TRP(SAC):
 		self.svea_beta = args.svea_beta
 		self.aux_update_freq = args.aux_update_freq
 		self.jump = args.jump
-		self.srp_batch = 256
+		self.trp_batch = 256
 
 		self.gammga_list = torch.logspace(0, self.jump-1, steps=self.jump, base=args.discount).cuda()
 		shared_cnn = self.critic.encoder.shared_cnn
@@ -58,7 +58,7 @@ class TRP(SAC):
 		).cuda()
 
 
-		self.srp_optimizer = torch.optim.Adam(
+		self.trp_optimizer = torch.optim.Adam(
 			itertools.chain(self.obs_encoder.parameters(), self.act_encoder.parameters(), self.transformer.parameters(), self.predictor.parameters(), self.reg_token.parameters()),
 			lr=args.aux_lr,
 			betas=(args.aux_beta, 0.999)
@@ -92,7 +92,7 @@ class TRP(SAC):
 		return self.predictor(x[:,0,:])
 	
 	def update_aux(self, replay_buffer, L=None, step=None):
-		obs, action, reward, next_obs, not_done = replay_buffer.sample_btsac(self.srp_batch)
+		obs, action, reward, next_obs, not_done = replay_buffer.sample_btsac(self.trp_batch)
 		
 		obs = obs[:,0,:,:,:]
 		reward = utils.cat(reward, reward)
@@ -100,7 +100,7 @@ class TRP(SAC):
 
 		obs = obs.reshape(-1, 9, 84, 84)
 
-		score = score.reshape(self.srp_batch*2, -1)
+		score = score.reshape(self.trp_batch*2, -1)
 		score = score.sum(dim=-1, keepdim=True)
 
 		obs = utils.cat(obs, augmentations.random_overlay(obs.clone()))
@@ -108,9 +108,9 @@ class TRP(SAC):
 		predict_score = self.compute_segment_return_predict_loss(obs, action)
 		aux_loss = F.mse_loss(predict_score, score)
 		
-		self.srp_optimizer.zero_grad()
+		self.trp_optimizer.zero_grad()
 		aux_loss.backward()
-		self.srp_optimizer.step()
+		self.trp_optimizer.step()
 		if L is not None:
 			L.log('train/aux_loss', aux_loss, step)
 
