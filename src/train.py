@@ -48,7 +48,7 @@ def main(args):
 		episode_length=args.episode_length,
 		action_repeat=args.action_repeat,
 		image_size=args.image_size,
-		mode='video_easy'
+		mode='train'
 	)
 	test_env = make_env(
 		domain_name=args.domain_name,
